@@ -44,5 +44,23 @@ int main(){
     // matrix multiply i * j
     // matrix multiply vector i * v
 
+    Eigen::Vector3f point(2.0, 1.0, 1.0);
+    std::cout << "P : " << point << std::endl;
+    Eigen::Matrix3f r, t;
+    float theta = 45.0 / 180.0 * acos(-1);
+    r << std::cos(theta), -std::sin(theta), 0.0,
+         std::sin(theta), std::cos(theta), 0.0,
+         0.0, 0.0, 1.0;
+
+    Eigen::Vector2f transform(1.0, 2.0);
+    t << 1.0, 0.0, transform(0),
+         0.0, 1.0, transform(1),
+         0.0, 0.0, 1.0;
+
+    std::cout << "Rotate Result : " << r * point << std::endl;
+
+    std::cout << "Transform Result : " << t * r * point << std::endl;
+    
+
     return 0;
 }
