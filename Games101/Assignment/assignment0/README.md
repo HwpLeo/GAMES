@@ -27,8 +27,17 @@ cd /d d:
 从sourceforge下载OpenCV。双击打开之后提示一个解压过程。解压完成后和eigen一样的操作。
 在configure执行完成后，取消勾选OPENCV_ENABLE_ALLOCATOR_STATS。再次点击configure。
 
+opencv执行make install不像eigen一样直接安装到了C盘，它的结果就是自建的build目录下的install目录。
+添加系统环境变量，变量名为`OpenCV_DIR`, 变狼值为`E:\OpenCV`
+将opencv要调用的二进制文件添加进入path
+
 
 最后还需要修改CMakeLists文件：
 ```
 include_directories("C:/Program Files (x86)/Eigen3/include")
 ```
+
+
+
+参考：
+https://zhuanlan.zhihu.com/p/363769672
