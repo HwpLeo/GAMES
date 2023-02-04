@@ -37,6 +37,13 @@ opencv执行make install不像eigen一样直接安装到了C盘，它的结果�
 include_directories("C:/Program Files (x86)/Eigen3/include")
 ```
 
+## 编译
+
+```
+cmake .. -G "MinGW Makefiles"
+make
+```
+
 
 
 参考：
