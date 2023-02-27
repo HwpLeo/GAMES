@@ -1,5 +1,6 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
+#include <cmath>
 
 #include "global.hpp"
 #include "rasterizer.hpp"
@@ -7,6 +8,9 @@
 #include "Shader.hpp"
 #include "Texture.hpp"
 #include "OBJ_Loader.h"
+
+bool output = false;
+int count = 0;
 
 Eigen::Matrix4f get_view_matrix(Eigen::Vector3f eye_pos)
 {
@@ -100,13 +104,22 @@ Eigen::Vector3f texture_fragment_shader(const fragment_shader_payload& payload)
     if (payload.texture)
     {
         // TODO: Get the texture value at the texture coordinates of the current fragment
-
+        return_color = payload.texture->getColor(payload.tex_coords.x(), payload.tex_coords.y());
+        std::cout << "=========" << std::endl;
+        std::cout << payload.tex_coords << std::endl;
+        std::cout << return_color << std::endl;
     }
     Eigen::Vector3f texture_color;
     texture_color << return_color.x(), return_color.y(), return_color.z();
 
     Eigen::Vector3f ka = Eigen::Vector3f(0.005, 0.005, 0.005);
     Eigen::Vector3f kd = texture_color / 255.f;
+    // if (!output)
+    // {
+    //     count++;
+    //     output = count > 15;
+    //     std::cout << kd << std::endl;
+    // }
     Eigen::Vector3f ks = Eigen::Vector3f(0.7937, 0.7937, 0.7937);
 
     auto l1 = light{{20, 20, 20}, {500, 500, 500}};
@@ -121,6 +134,7 @@ Eigen::Vector3f texture_fragment_shader(const fragment_shader_payload& payload)
     Eigen::Vector3f color = texture_color;
     Eigen::Vector3f point = payload.view_pos;
     Eigen::Vector3f normal = payload.normal;
+    Eigen::Vector3f view_dir = (eye_pos - point).normalized();
 
     Eigen::Vector3f result_color = {0, 0, 0};
 
@@ -128,7 +142,23 @@ Eigen::Vector3f texture_fragment_shader(const fragment_shader_payload& payload)
     {
         // TODO: For each light source in the code, calculate what the *ambient*, *diffuse*, and *specular* 
         // components are. Then, accumulate that result on the *result_color* object.
+        auto light_dir = (light.position - point).normalized();
+        auto h = (light_dir + view_dir).normalized();
 
+        float rr = (light.position - point).squaredNorm();
+
+        float ambient = 0.5f;
+        auto tmp = Eigen::Vector3f(ambient * ka.x() * amb_light_intensity.x(), ambient * ka.y() * amb_light_intensity.y(), ambient * ka.z() * amb_light_intensity.z());
+        auto amb_col = tmp;
+        float diffuse = fmax(0, h.dot(normal)) / rr;
+        tmp = Eigen::Vector3f(kd.x() * light.intensity.x(), kd.y() * light.intensity.y(), kd.z() * light.intensity.z());
+        auto dif_col = diffuse * tmp;
+        // auto ref_dir = 2*(light_dir.dot(normal)) * normal - light_dir;
+        float specular = pow(fmax(0, h.dot(normal)), p) / rr;
+        
+        tmp = Eigen::Vector3f(ks.x() * light.intensity.x(), ks.y() * light.intensity.y(), ks.z() * light.intensity.z());
+        auto spe_col = specular * tmp;
+        result_color += (amb_col + dif_col + spe_col);
     }
 
     return result_color * 255.f;
@@ -155,15 +185,34 @@ Eigen::Vector3f phong_fragment_shader(const fragment_shader_payload& payload)
     Eigen::Vector3f view_dir = (eye_pos - point).normalized();
 
     Eigen::Vector3f result_color = {0, 0, 0};
+    if (!output)
+    {
+        auto test = Eigen::Vector3f(ka.x() * amb_light_intensity.x(), ka.y() * amb_light_intensity.y(), ka.z() * amb_light_intensity.z());
+        std::cout << test << std::endl;
+        std::cout << test * 0.5f << std::endl;
+        output = true;
+    }
     for (auto& light : lights)
     {
         // TODO: For each light source in the code, calculate what the *ambient*, *diffuse*, and *specular* 
         // components are. Then, accumulate that result on the *result_color* object.
         auto light_dir = (light.position - point).normalized();
-        float diffuse = mathf.max(0, light_dir * view_dir);
-        auto ref_dir = 
-        float specular = 
+        auto h = (light_dir + view_dir).normalized();
+
+        float rr = (light.position - point).squaredNorm();
+
+        float ambient = 0.5f;
+        auto tmp = Eigen::Vector3f(ambient * ka.x() * amb_light_intensity.x(), ambient * ka.y() * amb_light_intensity.y(), ambient * ka.z() * amb_light_intensity.z());
+        auto amb_col = tmp;
+        float diffuse = fmax(0, h.dot(normal)) / rr;
+        tmp = Eigen::Vector3f(kd.x() * light.intensity.x(), kd.y() * light.intensity.y(), kd.z() * light.intensity.z());
+        auto dif_col = diffuse * tmp;
+        // auto ref_dir = 2*(light_dir.dot(normal)) * normal - light_dir;
+        float specular = pow(fmax(0, h.dot(normal)), p) / rr;
         
+        tmp = Eigen::Vector3f(ks.x() * light.intensity.x(), ks.y() * light.intensity.y(), ks.z() * light.intensity.z());
+        auto spe_col = specular * tmp;
+        result_color += (amb_col + dif_col + spe_col);
     }
 
     return result_color * 255.f;
@@ -190,6 +239,7 @@ Eigen::Vector3f displacement_fragment_shader(const fragment_shader_payload& payl
     Eigen::Vector3f color = payload.color; 
     Eigen::Vector3f point = payload.view_pos;
     Eigen::Vector3f normal = payload.normal;
+    Eigen::Vector3f view_dir = (point - eye_pos).normalized();
 
     float kh = 0.2, kn = 0.1;
     
@@ -211,7 +261,23 @@ Eigen::Vector3f displacement_fragment_shader(const fragment_shader_payload& payl
     {
         // TODO: For each light source in the code, calculate what the *ambient*, *diffuse*, and *specular* 
         // components are. Then, accumulate that result on the *result_color* object.
+        auto light_dir = (light.position - point).normalized();
+        auto h = (light_dir + view_dir).normalized();
 
+        float rr = (light.position - point).squaredNorm();
+
+        float ambient = 0.5f;
+        auto tmp = Eigen::Vector3f(ambient * ka.x() * amb_light_intensity.x(), ambient * ka.y() * amb_light_intensity.y(), ambient * ka.z() * amb_light_intensity.z());
+        auto amb_col = tmp;
+        float diffuse = fmax(0, h.dot(normal)) / rr;
+        tmp = Eigen::Vector3f(kd.x() * light.intensity.x(), kd.y() * light.intensity.y(), kd.z() * light.intensity.z());
+        auto dif_col = diffuse * tmp;
+        // auto ref_dir = 2*(light_dir.dot(normal)) * normal - light_dir;
+        float specular = pow(fmax(0, h.dot(normal)), p) / rr;
+        
+        tmp = Eigen::Vector3f(ks.x() * light.intensity.x(), ks.y() * light.intensity.y(), ks.z() * light.intensity.z());
+        auto spe_col = specular * tmp;
+        result_color += (amb_col + dif_col + spe_col);
 
     }
 
